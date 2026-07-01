@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlowOS — Workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F4F2ED; --paper-dim:#ECE9E1; --panel:#FBFAF7;
+  --ink:#17181B; --ink-soft:#4A4B49; --ink-faint:#8A8C86;
+  --deep:#152A2E; --deep-2:#0F2023;
+  --current:#2E9E93; --current-bright:#3FBBAF;
+  --amber:#D99A52; --red:#C1573F;
+  --line:rgba(23,24,27,0.12); --line-deep:rgba(244,242,237,0.14);
+  --radius:12px; --ease:cubic-bezier(.16,.84,.44,1);
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Source Serif 4',Georgia,serif;font-size:15.5px;-webkit-font-smoothing:antialiased;}
+h1,h2,h3,.disp{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;letter-spacing:-0.01em;margin:0;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+button{font-family:inherit;cursor:pointer;}
+input,textarea,select{font-family:inherit;}
+::-webkit-scrollbar{width:9px;height:9px;}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:10px;}
+a:focus-visible,button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--current);outline-offset:2px;border-radius:4px;}
+
+/* ---------- AUTH ---------- */
+#auth{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.auth-card{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:38px 32px;box-shadow:0 30px 60px -35px rgba(23,24,27,.35);}
+.auth-logo{display:flex;align-items:center;gap:9px;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:19px;margin-bottom:28px;}
+.auth-dot{width:9px;height:9px;border-radius:50%;background:var(--current);}
+.auth-card h2{font-size:23px;margin-bottom:6px;}
+.auth-card p.sub{color:var(--ink-soft);font-size:14px;margin:0 0 24px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-faint);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;}
+.field input{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;background:var(--paper);font-size:14.5px;color:var(--ink);}
+.field input:focus{border-color:var(--current);outline:none;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border-radius:100px;border:1px solid transparent;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;transition:all .2s var(--ease);text-decoration:none;background:transparent;color:var(--ink);}
+.btn-primary{background:var(--ink);color:var(--paper);width:100%;padding:12px;}
+.btn-primary:hover{background:var(--deep);}
+.btn-teal{background:var(--current);color:#fff;}
+.btn-teal:hover{background:var(--current-bright);}
+.btn-ghost{border-color:var(--line);}
+.btn-ghost:hover{border-color:var(--ink-faint);}
+.auth-switch{text-align:center;margin-top:18px;font-size:13.5px;color:var(--ink-soft);}
+.auth-switch button{background:none;border:none;color:var(--current);font-family:inherit;font-size:13.5px;padding:0;text-decoration:underline;}
+.auth-err{color:var(--red);font-size:12.5px;margin-top:-6px;margin-bottom:12px;font-family:'IBM Plex Mono',monospace;display:none;}
+
+/* ---------- APP SHELL ---------- */
+#app{display:none;height:100vh;overflow:hidden;}
+.shell{display:grid;grid-template-columns:230px 1fr;height:100vh;}
+@media(max-width:820px){.shell{grid-template-columns:1fr;}#sidebar{position:fixed;left:-240px;top:0;height:100vh;z-index:60;transition:left .25s var(--ease);}#sidebar.open{left:0;}}
+#sidebar{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:20px 14px;}
+.side-logo{display:flex;align-items:center;gap:9px;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:17px;padding:6px 10px 22px;}
+.side-nav{display:flex;flex-direction:column;gap:2px;flex:1;}
+.side-item{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;border:none;background:none;color:var(--ink-soft);font-size:14px;text-align:left;transition:all .15s var(--ease);}
+.side-item svg{width:17px;height:17px;flex-shrink:0;opacity:.8;}
+.side-item:hover{background:var(--paper-dim);color:var(--ink);}
+.side-item.active{background:var(--ink);color:var(--paper);}
+.side-item.active svg{opacity:1;}
+.side-bottom{border-top:1px solid var(--line);padding-top:12px;margin-top:10px;}
+.side-user{display:flex;align-items:center;gap:9px;padding:8px 10px;}
+.avatar{width:26px;height:26px;border-radius:50%;background:var(--current);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;flex-shrink:0;}
+.side-user .who{font-size:12.5px;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.side-logout{background:none;border:none;color:var(--ink-faint);font-family:'IBM Plex Mono',monospace;font-size:11.5px;margin-top:6px;padding:4px 10px;}
+
+#main{overflow-y:auto;height:100vh;}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(244,242,237,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:14px 28px;display:flex;align-items:center;gap:14px;justify-content:space-between;}
+.menu-btn{display:none;background:none;border:1px solid var(--line);border-radius:8px;width:34px;height:34px;align-items:center;justify-content:center;}
+@media(max-width:820px){.menu-btn{display:flex;}}
+.searchbar{flex:1;max-width:440px;display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:100px;padding:8px 15px;background:var(--panel);color:var(--ink-faint);font-family:'IBM Plex Mono',monospace;font-size:12.5px;}
+.searchbar .k{margin-left:auto;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:10.5px;}
+.view-title{font-size:14px;color:var(--ink-faint);font-family:'IBM Plex Mono',monospace;}
+.content{padding:30px 28px 80px;max-width:1080px;}
+.view{display:none;}
+.view.active{display:block;animation:fadeIn .3s var(--ease);}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.page-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:26px;gap:16px;flex-wrap:wrap;}
+.page-head h1{font-size:26px;}
+.page-head p{color:var(--ink-soft);font-size:14px;margin:6px 0 0;}
+
+/* dashboard */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:30px;}
+@media(max-width:700px){.stat-grid{grid-template-columns:repeat(2,1fr);}}
+.stat-box{background:var(--panel);padding:18px 20px;}
+.stat-box .n{font-family:'Bricolage Grotesque',sans-serif;font-size:26px;font-weight:700;}
+.stat-box .l{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-faint);margin-top:4px;text-transform:uppercase;letter-spacing:.04em;}
+.dash-cols{display:grid;grid-template-columns:1.3fr 1fr;gap:22px;}
+@media(max-width:800px){.dash-cols{grid-template-columns:1fr;}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;}
+.panel h3{font-size:14.5px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;}
+.panel h3 .mono{font-size:11px;color:var(--ink-faint);font-weight:400;}
+.quick-add{display:flex;gap:8px;margin-bottom:16px;}
+.quick-add input{flex:1;border:1px solid var(--line);border-radius:9px;padding:9px 12px;background:var(--paper);font-size:14px;}
+.task-row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line);font-size:14px;}
+.task-row:last-child{border-bottom:none;}
+.check{width:16px;height:16px;border:1.5px solid var(--ink-faint);border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s var(--ease);}
+.check.done{background:var(--current);border-color:var(--current);}
+.check.done::after{content:"✓";color:#fff;font-size:10px;}
+.task-row .ttl{flex:1;}
+.task-row.completed .ttl{text-decoration:line-through;color:var(--ink-faint);}
+.pill{font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:2px 8px;border-radius:100px;border:1px solid var(--line);color:var(--ink-faint);}
+.pill.p-high{color:var(--red);border-color:rgba(193,87,63,.35);}
+.pill.p-med{color:var(--amber);border-color:rgba(217,154,82,.35);}
+.pill.p-low{color:var(--current);border-color:rgba(46,158,147,.35);}
+.empty{color:var(--ink-faint);font-size:13.5px;font-style:italic;padding:10px 4px;}
+
+/* tasks kanban */
+.kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+@media(max-width:800px){.kanban{grid-template-columns:1fr;}}
+.kcol{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;min-height:200px;}
+.kcol-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:0 4px;}
+.kcol-head .name{font-family:'IBM Plex Mono',monospace;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);}
+.kcol-head .count{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-faint);background:var(--paper-dim);padding:2px 7px;border-radius:100px;}
+.kcard{background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:12px 13px;margin-bottom:9px;cursor:grab;transition:box-shadow .2s var(--ease),transform .15s var(--ease);}
+.kcard:active{cursor:grabbing;}
+.kcard.dragging{opacity:.4;}
+.kcol.dragover{background:var(--paper-dim);}
+.kcard .kt{font-size:14px;margin-bottom:8px;line-height:1.35;}
+.kcard .kf{display:flex;justify-content:space-between;align-items:center;gap:6px;}
+.kcard .kdue{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-faint);}
+.kcard .kdel{background:none;border:none;color:var(--ink-faint);font-size:12px;padding:2px;opacity:0;transition:opacity .15s;}
+.kcard:hover .kdel{opacity:1;}
+.add-card-btn{width:100%;text-align:left;background:none;border:1px dashed var(--line);border-radius:9px;padding:9px 12px;color:var(--ink-faint);font-size:13px;font-family:'IBM Plex Mono',monospace;}
+.add-card-btn:hover{border-color:var(--current);color:var(--current);}
+
+/* notes */
+.notes-layout{display:grid;grid-template-columns:250px 1fr;gap:0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--panel);min-height:520px;}
+@media(max-width:760px){.notes-layout{grid-template-columns:1fr;}}
+.notes-list{border-right:1px solid var(--line);padding:12px;}
+.notes-list-head{display:flex;justify-content:space-between;align-items:center;padding:4px 6px 10px;}
+.note-item{padding:10px 10px;border-radius:8px;cursor:pointer;font-size:13.5px;color:var(--ink-soft);margin-bottom:2px;}
+.note-item.active{background:var(--paper-dim);color:var(--ink);}
+.note-item .nt{display:block;color:var(--ink);font-size:14px;margin-bottom:2px;}
+.note-item .nd{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-faint);}
+.note-editor{padding:26px 30px;display:flex;flex-direction:column;}
+.note-editor input.note-title{border:none;background:none;font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:700;margin-bottom:14px;color:var(--ink);}
+.note-editor textarea{flex:1;border:none;background:none;resize:none;font-size:15.5px;line-height:1.7;min-height:380px;font-family:'Source Serif 4',serif;color:var(--ink);}
+.note-editor input:focus,.note-editor textarea:focus{outline:none;}
+.icon-btn{background:none;border:1px solid var(--line);border-radius:8px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-size:13px;}
+.icon-btn:hover{border-color:var(--current);color:var(--current);}
+
+/* focus room */
+.focus-wrap{background:radial-gradient(120% 140% at 20% -10%,#1A3438 0%,var(--deep-2) 55%,#0A1517 100%);border-radius:20px;padding:50px 40px;color:var(--paper);text-align:center;}
+.focus-task{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:rgba(244,242,237,.55);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;}
+.focus-task input{background:none;border:none;border-bottom:1px solid var(--line-deep);color:var(--paper);font-family:'Source Serif 4',serif;font-size:16px;text-align:center;padding:4px;width:min(400px,90%);}
+.focus-clock{font-family:'IBM Plex Mono',monospace;font-size:clamp(56px,10vw,84px);margin:26px 0 8px;letter-spacing:.02em;}
+.focus-modes{display:flex;justify-content:center;gap:8px;margin-bottom:26px;}
+.fmode{background:none;border:1px solid var(--line-deep);color:rgba(244,242,237,.6);border-radius:100px;padding:6px 14px;font-family:'IBM Plex Mono',monospace;font-size:12px;}
+.fmode.on{background:var(--current);border-color:var(--current);color:#fff;}
+.focus-controls{display:flex;justify-content:center;gap:12px;margin-bottom:34px;}
+.fbtn{padding:11px 26px;border-radius:100px;font-family:'IBM Plex Mono',monospace;font-size:13px;border:1px solid var(--line-deep);background:none;color:var(--paper);}
+.fbtn.primary{background:var(--current);border-color:var(--current);}
+.sound-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:30px;}
+.sound-chip{font-family:'IBM Plex Mono',monospace;font-size:12px;color:rgba(244,242,237,.7);border:1px solid var(--line-deep);border-radius:100px;padding:7px 14px;background:none;display:flex;align-items:center;gap:7px;}
+.sound-chip .dot{width:5px;height:5px;border-radius:50%;background:rgba(244,242,237,.35);}
+.sound-chip.on{border-color:var(--current-bright);background:rgba(63,187,175,.1);}
+.sound-chip.on .dot{background:var(--current-bright);box-shadow:0 0 8px var(--current-bright);}
+.focus-stats{display:flex;justify-content:center;gap:40px;}
+.focus-stats .fs .n{font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:700;}
+.focus-stats .fs .l{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:rgba(244,242,237,.5);margin-top:3px;}
+
+/* calendar */
+.cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.cal-nav{display:flex;gap:6px;align-items:center;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+.cal-dow{background:var(--paper-dim);padding:8px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink-faint);}
+.cal-cell{background:var(--panel);min-height:90px;padding:7px;position:relative;}
+.cal-cell.other{background:var(--paper);}
+.cal-cell .dn{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-faint);}
+.cal-cell.today .dn{color:#fff;background:var(--current);width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.cal-dot{width:5px;height:5px;border-radius:50%;background:var(--current);display:inline-block;margin:2px 2px 0 0;}
+.cal-tt{font-size:10px;color:var(--ink-soft);margin-top:3px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* goals / habits */
+.goal-card,.habit-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:12px;}
+.goal-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.goal-top .gt{font-size:15.5px;font-weight:600;font-family:'Bricolage Grotesque',sans-serif;}
+.goal-top .gp{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--current);}
+.bar{height:7px;background:var(--paper-dim);border-radius:100px;overflow:hidden;}
+.bar-fill{height:100%;background:var(--current);border-radius:100px;transition:width .3s var(--ease);}
+.goal-card input[type=range]{width:100%;margin-top:10px;accent-color:var(--current);}
+.habit-card{display:flex;align-items:center;gap:14px;}
+.habit-card .hn{flex:1;font-size:15px;}
+.week-dots{display:flex;gap:5px;}
+.wd{width:20px;height:20px;border-radius:6px;border:1px solid var(--line);background:var(--paper);font-size:0;}
+.wd.on{background:var(--current);border-color:var(--current);}
+.habit-today{background:none;border:1.5px solid var(--current);color:var(--current);border-radius:100px;padding:6px 14px;font-family:'IBM Plex Mono',monospace;font-size:12px;}
+.habit-today.on{background:var(--current);color:#fff;}
+
+/* whiteboard */
+.wb-toolbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+.wb-toolbar .swatch{width:22px;height:22px;border-radius:6px;border:2px solid transparent;cursor:pointer;}
+.wb-toolbar .swatch.sel{border-color:var(--ink);}
+.wb-canvas-wrap{position:relative;border:1px solid var(--line);border-radius:var(--radius);background:
+  linear-gradient(var(--paper-dim) 1px,transparent 1px) 0 0/22px 22px,
+  linear-gradient(90deg,var(--paper-dim) 1px,transparent 1px) 0 0/22px 22px,var(--panel);
+  height:560px;overflow:auto;}
+.wb-surface{position:relative;width:1600px;height:1100px;}
+.wb-draw-canvas{position:absolute;top:0;left:0;}
+.sticky{position:absolute;width:170px;min-height:130px;padding:12px;border-radius:6px;box-shadow:0 10px 22px -14px rgba(0,0,0,.35);cursor:grab;font-size:13.5px;line-height:1.4;}
+.sticky:active{cursor:grabbing;}
+.sticky textarea{width:100%;height:80px;background:none;border:none;resize:none;font-family:'Source Serif 4',serif;font-size:13.5px;color:var(--ink);}
+.sticky textarea:focus{outline:none;}
+.sticky .sdel{position:absolute;top:6px;right:8px;background:none;border:none;font-size:11px;color:rgba(23,24,27,.4);opacity:0;transition:opacity .15s;}
+.sticky:hover .sdel{opacity:1;}
+
+/* AI assistant */
+.ai-shell{display:flex;flex-direction:column;height:640px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);overflow:hidden;}
+.ai-quick{display:flex;gap:8px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--line);}
+.chip{font-family:'IBM Plex Mono',monospace;font-size:12px;border:1px solid var(--line);border-radius:100px;padding:7px 13px;background:var(--paper);color:var(--ink-soft);transition:all .2s var(--ease);}
+.chip:hover{border-color:var(--current);color:var(--current);}
+.ai-messages{flex:1;overflow-y:auto;padding:20px 22px;display:flex;flex-direction:column;gap:16px;}
+.ai-msg{max-width:78%;padding:12px 15px;border-radius:12px;font-size:14.5px;line-height:1.55;white-space:pre-wrap;}
+.ai-msg.user{align-self:flex-end;background:var(--ink);color:var(--paper);border-bottom-right-radius:3px;}
+.ai-msg.assistant{align-self:flex-start;background:var(--paper-dim);color:var(--ink);border-bottom-left-radius:3px;}
+.ai-msg.thinking{align-self:flex-start;background:var(--paper-dim);color:var(--ink-faint);font-family:'IBM Plex Mono',monospace;font-size:12.5px;}
+.ai-input-row{display:flex;gap:10px;padding:16px 18px;border-top:1px solid var(--line);}
+.ai-input-row textarea{flex:1;resize:none;border:1px solid var(--line);border-radius:10px;padding:10px 13px;font-size:14px;font-family:inherit;min-height:44px;max-height:120px;background:var(--paper);}
+.ai-input-row textarea:focus{outline:none;border-color:var(--current);}
+
+/* command palette */
+#cmdk-overlay{position:fixed;inset:0;background:rgba(23,24,27,.5);backdrop-filter:blur(2px);z-index:100;display:none;align-items:flex-start;justify-content:center;padding-top:12vh;}
+#cmdk-overlay.open{display:flex;}
+.cmdk-box{width:100%;max-width:560px;background:var(--panel);border-radius:14px;border:1px solid var(--line);box-shadow:0 40px 80px -30px rgba(0,0,0,.4);overflow:hidden;}
+.cmdk-input-row{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);}
+.cmdk-input-row input{flex:1;border:none;background:none;font-size:15px;font-family:'IBM Plex Mono',monospace;color:var(--ink);}
+.cmdk-input-row input:focus{outline:none;}
+.cmdk-list{max-height:340px;overflow-y:auto;padding:8px;}
+.cmdk-item{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:8px;font-size:14px;color:var(--ink-soft);}
+.cmdk-item svg{width:15px;height:15px;opacity:.7;flex-shrink:0;}
+.cmdk-item.sel{background:var(--current);color:#fff;}
+.cmdk-item.sel svg{opacity:1;}
+.cmdk-item .cg{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10.5px;opacity:.6;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--paper);padding:11px 20px;border-radius:100px;font-family:'IBM Plex Mono',monospace;font-size:13px;opacity:0;transition:all .3s var(--ease);z-index:200;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth">
+  <div class="auth-card">
+    <div class="auth-logo"><span class="auth-dot"></span>FlowOS</div>
+    <h2 id="authTitle">Welcome back</h2>
+    <p class="sub" id="authSub">Log in to your workspace.</p>
+    <div class="field" id="nameField" style="display:none;">
+      <label>Name</label>
+      <input id="authName" type="text" placeholder="Ada Lovelace">
+    </div>
+    <div class="field">
+      <label>Email</label>
+      <input id="authEmail" type="email" placeholder="you@studio.com">
+    </div>
+    <p class="auth-err" id="authErr">Enter a valid email to continue.</p>
+    <button class="btn btn-primary" id="authSubmit">Continue</button>
+    <div class="auth-switch">
+      <span id="switchText">New to FlowOS?</span>
+      <button id="switchBtn">Create an account</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="shell">
+    <aside id="sidebar">
+      <div class="side-logo"><span class="auth-dot"></span>FlowOS</div>
+      <nav class="side-nav" id="sideNav">
+        <button class="side-item" data-view="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="3.5" width="7" height="9" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="5" rx="1.5"/><rect x="13.5" y="11.5" width="7" height="9" rx="1.5"/><rect x="3.5" y="15.5" width="7" height="5" rx="1.5"/></svg>Dashboard</button>
+        <button class="side-item" data-view="tasks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="4" width="17" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h4"/></svg>Tasks</button>
+        <button class="side-item" data-view="notes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 3h9l5 5v13H6z"/><path d="M15 3v5h5M9 12h6M9 16h6"/></svg>Notes</button>
+        <button class="side-item" data-view="focus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></svg>Focus Room</button>
+        <button class="side-item" data-view="calendar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/></svg>Calendar</button>
+        <button class="side-item" data-view="goals"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 21c-4-3-8-6.5-8-11a5 5 0 019-3 5 5 0 019 3c0 4.5-4 8-8 11z"/></svg>Goals</button>
+        <button class="side-item" data-view="habits"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="3.5" width="4.2" height="4.2" rx="1"/><rect x="10" y="3.5" width="4.2" height="4.2" rx="1"/><rect x="16.5" y="3.5" width="4.2" height="4.2" rx="1"/><rect x="3.5" y="10" width="4.2" height="4.2" rx="1"/><rect x="10" y="10" width="4.2" height="4.2" rx="1" fill="currentColor"/></svg>Habits</button>
+        <button class="side-item" data-view="whiteboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M8 14l3-3 3 3 3-4"/><circle cx="8.5" cy="8.5" r="1.2"/></svg>Whiteboard</button>
+        <button class="side-item" data-view="ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3v3M12 18v3M4.2 7.5l2.6 1.5M17.2 15l2.6 1.5M4.2 16.5l2.6-1.5M17.2 9l2.6-1.5"/><circle cx="12" cy="12" r="4"/></svg>AI Assistant</button>
+      </nav>
+      <div class="side-bottom">
+        <div class="side-user"><div class="avatar" id="avatarInit">A</div><div class="who" id="whoName">—</div></div>
+        <button class="side-logout" id="logoutBtn">Log out</button>
+      </div>
+    </aside>
+
+    <main id="main">
+      <div class="topbar">
+        <button class="menu-btn" id="menuBtn">☰</button>
+        <button class="searchbar" id="openCmdk"><span>Search or run a command…</span><span class="k">⌘K</span></button>
+        <span class="view-title" id="viewTitle mono">FLOWOS / DASHBOARD</span>
+      </div>
+      <div class="content">
+
+        <div class="view active" id="view-dashboard">
+          <div class="page-head"><div><h1 id="greeting">Good day.</h1><p>Here's where things stand.</p></div></div>
+          <div class="stat-grid">
+            <div class="stat-box"><div class="n" id="statOpen">0</div><div class="l">Open tasks</div></div>
+            <div class="stat-box"><div class="n" id="statDoneToday">0</div><div class="l">Done today</div></div>
+            <div class="stat-box"><div class="n" id="statStreak">0</div><div class="l">Focus streak</div></div>
+            <div class="stat-box"><div class="n" id="statMinutes">0m</div><div class="l">Focused today</div></div>
+          </div>
+          <div class="dash-cols">
+            <div class="panel">
+              <h3>Today <span class="mono" id="todayCount">0 tasks</span></h3>
+              <div class="quick-add"><input id="quickAddInput" placeholder="Add a task and press Enter…"></div>
+              <div id="dashTaskList"></div>
+            </div>
+            <div class="panel">
+              <h3>Habits today</h3>
+              <div id="dashHabitList"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="view" id="view-tasks">
+          <div class="page-head"><div><h1>Tasks</h1><p>Drag cards between columns to update status.</p></div>
+            <button class="btn btn-teal" id="newTaskTop">+ New task</button></div>
+          <div class="kanban" id="kanban"></div>
+        </div>
+
+        <div class="view" id="view-notes">
+          <div class="page-head"><div><h1>Notes</h1><p>Your second brain. Saves as you type.</p></div>
+            <button class="btn btn-teal" id="newNoteBtn">+ New note</button></div>
+          <div class="notes-layout">
+            <div class="notes-list" id="notesList"></div>
+            <div class="note-editor" id="noteEditor">
+              <input class="note-title" id="noteTitleInput" placeholder="Untitled">
+              <textarea id="noteBodyInput" placeholder="Start writing…"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="view" id="view-focus">
+          <div class="page-head"><div><h1>Focus Room</h1><p>Close the door on everything else.</p></div></div>
+          <div class="focus-wrap">
+            <div class="focus-task">Working on</div>
+            <input id="focusTaskInput" placeholder="What are you focusing on?">
+            <div class="focus-clock" id="focusClock">25:00</div>
+            <div class="focus-modes">
+              <button class="fmode on" data-min="25">Focus 25</button>
+              <button class="fmode" data-min="50">Deep 50</button>
+              <button class="fmode" data-min="5">Break 5</button>
+            </div>
+            <div class="focus-controls">
+              <button class="fbtn primary" id="focusStart">Start</button>
+              <button class="fbtn" id="focusReset">Reset</button>
+            </div>
+            <div class="sound-chips" id="soundChips">
+              <button class="sound-chip on" data-freq="0">None<span class="dot"></span></button>
+              <button class="sound-chip" data-freq="400">Rain<span class="dot"></span></button>
+              <button class="sound-chip" data-freq="180">Ocean<span class="dot"></span></button>
+              <button class="sound-chip" data-freq="900">Café<span class="dot"></span></button>
+              <button class="sound-chip" data-freq="80">Brown noise<span class="dot"></span></button>
+            </div>
+            <div class="focus-stats">
+              <div class="fs"><div class="n" id="fsStreak">0</div><div class="l">DAY STREAK</div></div>
+              <div class="fs"><div class="n" id="fsMinutes">0m</div><div class="l">TODAY</div></div>
+              <div class="fs"><div class="n" id="fsSessions">0</div><div class="l">SESSIONS TODAY</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="view" id="view-calendar">
+          <div class="page-head"><div><h1>Calendar</h1><p>Tasks with due dates, laid out by day.</p></div></div>
+          <div class="cal-head">
+            <div class="mono" id="calMonthLabel" style="font-size:15px;"></div>
+            <div class="cal-nav">
+              <button class="icon-btn" id="calPrev">←</button>
+              <button class="icon-btn" id="calNext">→</button>
+            </div>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+        </div>
+
+        <div class="view" id="view-goals">
+          <div class="page-head"><div><h1>Goals</h1><p>Track progress toward what matters this quarter.</p></div>
+            <button class="btn btn-teal" id="newGoalBtn">+ New goal</button></div>
+          <div id="goalsList"></div>
+        </div>
+
+        <div class="view" id="view-habits">
+          <div class="page-head"><div><h1>Habits</h1><p>Small things, tracked honestly.</p></div>
+            <button class="btn btn-teal" id="newHabitBtn">+ New habit</button></div>
+          <div id="habitsList"></div>
+        </div>
+
+        <div class="view" id="view-whiteboard">
+          <div class="page-head"><div><h1>Whiteboard</h1><p>Drag notes around. Draw when you need to think with your hands.</p></div></div>
+          <div class="wb-toolbar">
+            <button class="btn btn-teal" id="addStickyBtn">+ Sticky note</button>
+            <button class="btn btn-ghost" id="drawToggleBtn">✏️ Draw</button>
+            <button class="btn btn-ghost" id="clearDrawBtn">Clear drawing</button>
+            <span class="mono" style="font-size:12px;color:var(--ink-faint);margin-left:6px;">Color:</span>
+            <span class="swatch sel" style="background:#F6E27A" data-color="#F6E27A"></span>
+            <span class="swatch" style="background:#A9D8CF" data-color="#A9D8CF"></span>
+            <span class="swatch" style="background:#F2B8A8" data-color="#F2B8A8"></span>
+            <span class="swatch" style="background:#C9C2E8" data-color="#C9C2E8"></span>
+          </div>
+          <div class="wb-canvas-wrap" id="wbCanvasWrap">
+            <div class="wb-surface" id="wbSurface">
+              <canvas class="wb-draw-canvas" id="wbDrawCanvas" width="1600" height="1100"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="view" id="view-ai">
+          <div class="page-head"><div><h1>AI Assistant</h1><p>It can see your real tasks and notes — ask it to act on them.</p></div></div>
+          <div class="ai-shell">
+            <div class="ai-quick" id="aiQuick">
+              <button class="chip" data-p="Look at my open tasks and tell me what I should prioritize today, and why.">Prioritize my tasks</button>
+              <button class="chip" data-p="Summarize my notes in a few sentences.">Summarize my notes</button>
+              <button class="chip" data-p="Suggest 3 subtasks for my most important open task.">Break down a task</button>
+              <button class="chip" data-p="Based on my current habits and goals, suggest one thing I'm missing.">Suggest what's missing</button>
+            </div>
+            <div class="ai-messages" id="aiMessages"></div>
+            <div class="ai-input-row">
+              <textarea id="aiInput" placeholder="Ask FlowOS AI anything about your workspace…"></textarea>
+              <button class="btn btn-teal" id="aiSend">Send</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- COMMAND PALETTE -->
+<div id="cmdk-overlay">
+  <div class="cmdk-box">
+    <div class="cmdk-input-row"><span class="mono">⌘K</span><input id="cmdkInput" placeholder="Type a command or search…" autocomplete="off"></div>
+    <div class="cmdk-list" id="cmdkList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------------- storage helpers ---------------- */
+async function load(key, fallback){
+  try{ const r = await window.storage.get(key, false); return r ? JSON.parse(r.value) : fallback; }
+  catch(e){ return fallback; }
+}
+async function save(key, value){
+  try{ await window.storage.set(key, JSON.stringify(value), false); }catch(e){ console.error('save failed', e); }
+}
+function uid(){ return Math.random().toString(36).slice(2,9); }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(()=>t.classList.remove('show'),1800); }
+
+/* ---------------- state ---------------- */
+let state = { user:null, tasks:[], notes:[], goals:[], habits:[], focus:{streak:0, log:{}}, whiteboard:{stickies:[],drawing:null}, aiHistory:[] };
+let activeNoteId = null;
+let calCursor = new Date();
+
+/* ---------------- AUTH ---------------- */
+let mode = 'login';
+const authTitle=document.getElementById('authTitle'), authSub=document.getElementById('authSub');
+const nameField=document.getElementById('nameField'), switchText=document.getElementById('switchText'), switchBtn=document.getElementById('switchBtn');
+switchBtn.addEventListener('click', ()=>{
+  mode = mode==='login' ? 'signup' : 'login';
+  if(mode==='signup'){ authTitle.textContent='Create your workspace'; authSub.textContent='Takes about ten seconds.'; nameField.style.display='block'; switchText.textContent='Already have an account?'; switchBtn.textContent='Log in'; }
+  else{ authTitle.textContent='Welcome back'; authSub.textContent='Log in to your workspace.'; nameField.style.display='none'; switchText.textContent='New to FlowOS?'; switchBtn.textContent='Create an account'; }
+});
+document.getElementById('authSubmit').addEventListener('click', doAuth);
+document.getElementById('authEmail').addEventListener('keydown', e=>{ if(e.key==='Enter') doAuth(); });
+async function doAuth(){
+  const email = document.getElementById('authEmail').value.trim();
+  const name = document.getElementById('authName').value.trim();
+  const err = document.getElementById('authErr');
+  if(!email.includes('@')){ err.style.display='block'; return; }
+  err.style.display='none';
+  const user = { email, name: name || email.split('@')[0] };
+  await save('user', user);
+  state.user = user;
+  await bootApp();
+}
+async function tryAutoLogin(){
+  const u = await load('user', null);
+  if(u){ state.user = u; await bootApp(); }
+}
+
+/* ---------------- BOOT ---------------- */
+async function bootApp(){
+  document.getElementById('auth').style.display='none';
+  document.getElementById('app').style.display='block';
+  state.tasks = await load('tasks', []);
+  state.notes = await load('notes', []);
+  state.goals = await load('goals', [{id:uid(),title:'Launch FlowOS site',progress:70},{id:uid(),title:'Sign 5 new agency clients',progress:35}]);
+  state.habits = await load('habits', [{id:uid(),name:'Morning pages',days:{}},{id:uid(),name:'Read 20 min',days:{}},{id:uid(),name:'Workout',days:{}}]);
+  state.focus = await load('focus', {streak:0, log:{}});
+  state.whiteboard = await load('whiteboard', {stickies:[], drawing:null});
+  state.aiHistory = await load('aiHistory', []);
+  document.getElementById('whoName').textContent = state.user.name;
+  document.getElementById('avatarInit').textContent = state.user.name[0].toUpperCase();
+  document.getElementById('greeting').textContent = greetingText() + ', ' + state.user.name.split(' ')[0] + '.';
+  renderAll();
+}
+function greetingText(){ const h = new Date().getHours(); return h<12?'Good morning':h<18?'Good afternoon':'Good evening'; }
+document.getElementById('logoutBtn').addEventListener('click', ()=>{
+  document.getElementById('app').style.display='none';
+  document.getElementById('auth').style.display='flex';
+});
+
+/* ---------------- NAV ---------------- */
+const views = ['dashboard','tasks','notes','focus','calendar','goals','habits','whiteboard','ai'];
+function goTo(view){
+  views.forEach(v=>{
+    document.getElementById('view-'+v).classList.toggle('active', v===view);
+  });
+  document.querySelectorAll('.side-item').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
+  document.querySelector('.view-title').textContent = 'FLOWOS / ' + view.toUpperCase();
+  document.getElementById('sidebar').classList.remove('open');
+  if(view==='calendar') renderCalendar();
+  if(view==='whiteboard') renderWhiteboard();
+}
+document.querySelectorAll('.side-item').forEach(b=>b.addEventListener('click', ()=>goTo(b.dataset.view)));
+document.getElementById('menuBtn').addEventListener('click', ()=>document.getElementById('sidebar').classList.toggle('open'));
+
+/* ---------------- RENDER ALL ---------------- */
+function renderAll(){ renderDashboard(); renderKanban(); renderNotes(); renderGoals(); renderHabits(); renderFocusStats(); renderCalendar(); renderAiHistory(); }
+
+/* ---------------- TASKS ---------------- */
+function addTask(title, extra){
+  if(!title.trim()) return;
+  state.tasks.unshift(Object.assign({id:uid(), title:title.trim(), status:'todo', priority:'med', due:null, createdAt:Date.now(), completedAt:null}, extra||{}));
+  save('tasks', state.tasks); renderDashboard(); renderKanban(); renderCalendar();
+}
+document.getElementById('quickAddInput').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ addTask(e.target.value); e.target.value=''; }
+});
+document.getElementById('newTaskTop').addEventListener('click', ()=>{
+  const t = prompt('Task title:'); if(t) addTask(t);
+});
+function toggleTask(id){
+  const t = state.tasks.find(x=>x.id===id); if(!t) return;
+  if(t.status==='done'){ t.status='todo'; t.completedAt=null; } else { t.status='done'; t.completedAt=Date.now(); }
+  save('tasks', state.tasks); renderDashboard(); renderKanban();
+}
+function deleteTask(id){ state.tasks = state.tasks.filter(t=>t.id!==id); save('tasks', state.tasks); renderDashboard(); renderKanban(); renderCalendar(); }
+
+function renderDashboard(){
+  const open = state.tasks.filter(t=>t.status!=='done').length;
+  document.getElementById('statOpen').textContent = open;
+  const todayStr = new Date().toDateString();
+  const doneToday = state.tasks.filter(t=>t.completedAt && new Date(t.completedAt).toDateString()===todayStr).length;
+  document.getElementById('statDoneToday').textContent = doneToday;
+  document.getElementById('statStreak').textContent = state.focus.streak || 0;
+  const todayMin = (state.focus.log && state.focus.log[todayStr]) || 0;
+  document.getElementById('statMinutes').textContent = todayMin + 'm';
+
+  const upcoming = state.tasks.filter(t=>t.status!=='done').slice(0,6);
+  document.getElementById('todayCount').textContent = upcoming.length + ' tasks';
+  const list = document.getElementById('dashTaskList');
+  list.innerHTML = upcoming.length ? '' : '<div class="empty">Nothing on your plate. Add something above.</div>';
+  upcoming.forEach(t=>{
+    const row = document.createElement('div'); row.className='task-row'+(t.status==='done'?' completed':'');
+    row.innerHTML = `<div class="check${t.status==='done'?' done':''}" data-id="${t.id}"></div><div class="ttl">${escapeHtml(t.title)}</div><span class="pill p-${t.priority}">${t.priority}</span>`;
+    row.querySelector('.check').addEventListener('click', ()=>toggleTask(t.id));
+    list.appendChild(row);
+  });
+
+  const hlist = document.getElementById('dashHabitList');
+  const todayKey = todayStr;
+  hlist.innerHTML = state.habits.length ? '' : '<div class="empty">No habits yet.</div>';
+  state.habits.forEach(h=>{
+    const on = !!h.days[todayKey];
+    const row = document.createElement('div'); row.className='task-row';
+    row.innerHTML = `<div class="check${on?' done':''}" data-id="${h.id}"></div><div class="ttl">${escapeHtml(h.name)}</div>`;
+    row.querySelector('.check').addEventListener('click', ()=>toggleHabitToday(h.id));
+    hlist.appendChild(row);
+  });
+}
+
+const KCOLS = [['todo','To do'],['doing','Doing'],['done','Done']];
+function renderKanban(){
+  const wrap = document.getElementById('kanban'); wrap.innerHTML='';
+  KCOLS.forEach(([key,label])=>{
+    const col = document.createElement('div'); col.className='kcol'; col.dataset.status=key;
+    const items = state.tasks.filter(t=>t.status===key);
+    col.innerHTML = `<div class="kcol-head"><span class="name">${label}</span><span class="count">${items.length}</span></div>`;
+    items.forEach(t=>{
+      const c = document.createElement('div'); c.className='kcard'; c.draggable=true; c.dataset.id=t.id;
+      c.innerHTML = `<div class="kt">${escapeHtml(t.title)}</div><div class="kf"><span class="pill p-${t.priority}">${t.priority}</span><span class="kdue">${t.due?t.due:''}</span><button class="kdel">✕</button></div>`;
+      c.addEventListener('dragstart', ()=>{ c.classList.add('dragging'); window._dragId = t.id; });
+      c.addEventListener('dragend', ()=>c.classList.remove('dragging'));
+      c.querySelector('.kdel').addEventListener('click', (e)=>{ e.stopPropagation(); deleteTask(t.id); });
+      col.appendChild(c);
+    });
+    const addBtn = document.createElement('button'); addBtn.className='add-card-btn'; addBtn.textContent='+ Add task';
+    addBtn.addEventListener('click', ()=>{ const t=prompt('Task title:'); if(t) addTask(t, {status:key}); });
+    col.appendChild(addBtn);
+    col.addEventListener('dragover', e=>{ e.preventDefault(); col.classList.add('dragover'); });
+    col.addEventListener('dragleave', ()=>col.classList.remove('dragover'));
+    col.addEventListener('drop', ()=>{
+      col.classList.remove('dragover');
+      const t = state.tasks.find(x=>x.id===window._dragId);
+      if(t){ t.status=key; if(key==='done') t.completedAt=Date.now(); else t.completedAt=null; save('tasks', state.tasks); renderKanban(); renderDashboard(); }
+    });
+    wrap.appendChild(col);
+  });
+}
+
+/* ---------------- NOTES ---------------- */
+document.getElementById('newNoteBtn').addEventListener('click', ()=>{
+  const n = {id:uid(), title:'Untitled', body:'', updatedAt:Date.now()};
+  state.notes.unshift(n); save('notes', state.notes); activeNoteId = n.id; renderNotes();
+});
+function renderNotes(){
+  if(!activeNoteId && state.notes.length) activeNoteId = state.notes[0].id;
+  const listEl = document.getElementById('notesList');
+  listEl.innerHTML = '<div class="notes-list-head mono" style="font-size:11px;color:var(--ink-faint);">ALL NOTES</div>';
+  if(!state.notes.length) listEl.innerHTML += '<div class="empty">No notes yet.</div>';
+  state.notes.forEach(n=>{
+    const el = document.createElement('div'); el.className='note-item'+(n.id===activeNoteId?' active':'');
+    el.innerHTML = `<span class="nt">${escapeHtml(n.title||'Untitled')}</span><span class="nd">${new Date(n.updatedAt).toLocaleDateString()}</span>`;
+    el.addEventListener('click', ()=>{ activeNoteId = n.id; renderNotes(); });
+    listEl.appendChild(el);
+  });
+  const active = state.notes.find(n=>n.id===activeNoteId);
+  const titleEl = document.getElementById('noteTitleInput'), bodyEl = document.getElementById('noteBodyInput');
+  titleEl.value = active ? active.title : '';
+  bodyEl.value = active ? active.body : '';
+  titleEl.oninput = ()=>{ if(active){ active.title=titleEl.value; active.updatedAt=Date.now(); save('notes', state.notes); renderNotes(); } };
+  bodyEl.oninput = ()=>{ if(active){ active.body=bodyEl.value; active.updatedAt=Date.now(); save('notes', state.notes); } };
+}
+
+/* ---------------- FOCUS ROOM ---------------- */
+let focusSeconds = 25*60, focusRunning=false, focusTimer=null, focusMinutesSet=25;
+const clockEl = document.getElementById('focusClock');
+document.querySelectorAll('.fmode').forEach(b=>b.addEventListener('click', ()=>{
+  document.querySelectorAll('.fmode').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  focusMinutesSet = parseInt(b.dataset.min); focusSeconds = focusMinutesSet*60; updateClock(); pauseFocus();
+}));
+function updateClock(){
+  const m = Math.floor(focusSeconds/60), s = focusSeconds%60;
+  clockEl.textContent = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+document.getElementById('focusStart').addEventListener('click', ()=>{
+  if(focusRunning) pauseFocus(); else startFocus();
+});
+function startFocus(){
+  focusRunning=true; document.getElementById('focusStart').textContent='Pause'; startNoise();
+  focusTimer = setInterval(()=>{
+    focusSeconds--; updateClock();
+    if(focusSeconds<=0){ clearInterval(focusTimer); focusRunning=false; document.getElementById('focusStart').textContent='Start'; stopNoise(); completeSession(); }
+  },1000);
+}
+function pauseFocus(){ focusRunning=false; clearInterval(focusTimer); document.getElementById('focusStart').textContent='Start'; stopNoise(); }
+document.getElementById('focusReset').addEventListener('click', ()=>{ pauseFocus(); focusSeconds=focusMinutesSet*60; updateClock(); });
+async function completeSession(){
+  const todayStr = new Date().toDateString();
+  state.focus.log = state.focus.log || {};
+  state.focus.log[todayStr] = (state.focus.log[todayStr]||0) + focusMinutesSet;
+  state.focus.log['sessions_'+todayStr] = (state.focus.log['sessions_'+todayStr]||0) + 1;
+  const yest = new Date(Date.now()-86400000).toDateString();
+  if(state.focus.lastDay !== todayStr){
+    state.focus.streak = (state.focus.lastDay===yest) ? (state.focus.streak||0)+1 : 1;
+    state.focus.lastDay = todayStr;
+  }
+  await save('focus', state.focus);
+  toast('Nice focus session — ' + focusMinutesSet + ' minutes logged.');
+  renderFocusStats(); renderDashboard();
+}
+function renderFocusStats(){
+  const todayStr = new Date().toDateString();
+  document.getElementById('fsStreak').textContent = state.focus.streak || 0;
+  document.getElementById('fsMinutes').textContent = ((state.focus.log && state.focus.log[todayStr])||0)+'m';
+  document.getElementById('fsSessions').textContent = (state.focus.log && state.focus.log['sessions_'+todayStr])||0;
+}
+updateClock();
+
+/* ambient noise via WebAudio */
+let actx=null, noiseNode=null, filterNode=null, gainNode=null;
+function ensureCtx(){ if(!actx) actx = new (window.AudioContext||window.webkitAudioContext)(); }
+function startNoise(){
+  const active = document.querySelector('.sound-chip.on');
+  const freq = active ? parseInt(active.dataset.freq) : 0;
+  if(!freq) return;
+  ensureCtx();
+  const bufferSize = 2*actx.sampleRate;
+  const buffer = actx.createBuffer(1, bufferSize, actx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for(let i=0;i<bufferSize;i++) data[i] = Math.random()*2-1;
+  noiseNode = actx.createBufferSource(); noiseNode.buffer = buffer; noiseNode.loop = true;
+  filterNode = actx.createBiquadFilter(); filterNode.type='lowpass'; filterNode.frequency.value = freq;
+  gainNode = actx.createGain(); gainNode.gain.value = 0.06;
+  noiseNode.connect(filterNode).connect(gainNode).connect(actx.destination);
+  noiseNode.start();
+}
+function stopNoise(){ if(noiseNode){ try{noiseNode.stop();}catch(e){} noiseNode=null; } }
+document.querySelectorAll('.sound-chip').forEach(chip=>chip.addEventListener('click', ()=>{
+  document.querySelectorAll('.sound-chip').forEach(c=>c.classList.remove('on')); chip.classList.add('on');
+  if(focusRunning){ stopNoise(); startNoise(); }
+}));
+
+/* ---------------- CALENDAR ---------------- */
+function renderCalendar(){
+  const grid = document.getElementById('calGrid'); grid.innerHTML='';
+  const label = document.getElementById('calMonthLabel');
+  const y = calCursor.getFullYear(), m = calCursor.getMonth();
+  label.textContent = calCursor.toLocaleString('default',{month:'long',year:'numeric'}).toUpperCase();
+  ['SUN','MON','TUE','WED','THU','FRI','SAT'].forEach(d=>{ const el=document.createElement('div'); el.className='cal-dow'; el.textContent=d; grid.appendChild(el); });
+  const firstDay = new Date(y,m,1).getDay();
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const daysInPrev = new Date(y,m,0).getDate();
+  const todayStr = new Date().toDateString();
+  const cells = [];
+  for(let i=firstDay-1;i>=0;i--) cells.push({d:daysInPrev-i, other:true, date:new Date(y,m-1,daysInPrev-i)});
+  for(let d=1;d<=daysInMonth;d++) cells.push({d, other:false, date:new Date(y,m,d)});
+  while(cells.length%7!==0 || cells.length<35) cells.push({d:cells.length-daysInMonth-firstDay+1, other:true, date:new Date(y,m+1,cells.length-daysInMonth-firstDay+1)});
+  cells.forEach(c=>{
+    const el = document.createElement('div'); el.className='cal-cell'+(c.other?' other':'')+(c.date.toDateString()===todayStr?' today':'');
+    const dayTasks = state.tasks.filter(t=>t.due && new Date(t.due).toDateString()===c.date.toDateString());
+    el.innerHTML = `<span class="dn">${c.d}</span>`+dayTasks.slice(0,2).map(t=>`<div class="cal-tt">${escapeHtml(t.title)}</div>`).join('');
+    grid.appendChild(el);
+  });
+}
+document.getElementById('calPrev').addEventListener('click', ()=>{ calCursor.setMonth(calCursor.getMonth()-1); renderCalendar(); });
+document.getElementById('calNext').addEventListener('click', ()=>{ calCursor.setMonth(calCursor.getMonth()+1); renderCalendar(); });
+
+/* ---------------- GOALS ---------------- */
+document.getElementById('newGoalBtn').addEventListener('click', ()=>{
+  const t = prompt('Goal title:'); if(!t) return;
+  state.goals.unshift({id:uid(), title:t, progress:0}); save('goals', state.goals); renderGoals();
+});
+function renderGoals(){
+  const wrap = document.getElementById('goalsList'); wrap.innerHTML='';
+  if(!state.goals.length) wrap.innerHTML = '<div class="empty">No goals yet — add one above.</div>';
+  state.goals.forEach(g=>{
+    const el = document.createElement('div'); el.className='goal-card';
+    el.innerHTML = `<div class="goal-top"><span class="gt">${escapeHtml(g.title)}</span><span class="gp">${g.progress}%</span></div>
+      <div class="bar"><div class="bar-fill" style="width:${g.progress}%"></div></div>
+      <input type="range" min="0" max="100" value="${g.progress}">`;
+    el.querySelector('input[type=range]').addEventListener('input', e=>{
+      g.progress = parseInt(e.target.value); el.querySelector('.gp').textContent=g.progress+'%'; el.querySelector('.bar-fill').style.width=g.progress+'%'; save('goals', state.goals);
+    });
+    wrap.appendChild(el);
+  });
+}
+
+/* ---------------- HABITS ---------------- */
+document.getElementById('newHabitBtn').addEventListener('click', ()=>{
+  const n = prompt('Habit name:'); if(!n) return;
+  state.habits.unshift({id:uid(), name:n, days:{}}); save('habits', state.habits); renderHabits(); renderDashboard();
+});
+function toggleHabitToday(id){
+  const h = state.habits.find(x=>x.id===id); if(!h) return;
+  const key = new Date().toDateString();
+  h.days[key] = !h.days[key];
+  save('habits', state.habits); renderHabits(); renderDashboard();
+}
+function renderHabits(){
+  const wrap = document.getElementById('habitsList'); wrap.innerHTML='';
+  if(!state.habits.length) wrap.innerHTML = '<div class="empty">No habits yet — add one above.</div>';
+  const last7 = [...Array(7)].map((_,i)=>{ const d=new Date(Date.now()-(6-i)*86400000); return d; });
+  state.habits.forEach(h=>{
+    const todayKey = new Date().toDateString(); const onToday = !!h.days[todayKey];
+    const el = document.createElement('div'); el.className='habit-card';
+    el.innerHTML = `<div class="hn">${escapeHtml(h.name)}</div>
+      <div class="week-dots">${last7.map(d=>`<div class="wd${h.days[d.toDateString()]?' on':''}"></div>`).join('')}</div>
+      <button class="habit-today${onToday?' on':''}">${onToday?'Done today':'Mark done'}</button>`;
+    el.querySelector('.habit-today').addEventListener('click', ()=>toggleHabitToday(h.id));
+    wrap.appendChild(el);
+  });
+}
+
+/* ---------------- WHITEBOARD ---------------- */
+let wbColor = '#F6E27A', wbDrawMode = false, wbDrawing = false, wbCtx = null;
+document.querySelectorAll('.wb-toolbar .swatch').forEach(sw=>sw.addEventListener('click', ()=>{
+  document.querySelectorAll('.wb-toolbar .swatch').forEach(s=>s.classList.remove('sel'));
+  sw.classList.add('sel'); wbColor = sw.dataset.color;
+}));
+document.getElementById('addStickyBtn').addEventListener('click', ()=>{
+  const s = {id:uid(), x:40+Math.random()*300, y:30+Math.random()*200, color:wbColor, text:''};
+  state.whiteboard.stickies.push(s); save('whiteboard', state.whiteboard); renderWhiteboard();
+});
+document.getElementById('drawToggleBtn').addEventListener('click', (e)=>{
+  wbDrawMode = !wbDrawMode;
+  e.target.style.borderColor = wbDrawMode ? 'var(--current)' : '';
+  e.target.style.color = wbDrawMode ? 'var(--current)' : '';
+  document.getElementById('wbDrawCanvas').style.pointerEvents = wbDrawMode ? 'auto' : 'none';
+  document.getElementById('wbDrawCanvas').style.cursor = wbDrawMode ? 'crosshair' : 'default';
+});
+document.getElementById('clearDrawBtn').addEventListener('click', ()=>{
+  const canvas = document.getElementById('wbDrawCanvas');
+  wbCtx.clearRect(0,0,canvas.width,canvas.height);
+  state.whiteboard.drawing = null; save('whiteboard', state.whiteboard);
+});
+function renderWhiteboard(){
+  const surface = document.getElementById('wbSurface');
+  surface.querySelectorAll('.sticky').forEach(el=>el.remove());
+  const canvas = document.getElementById('wbDrawCanvas');
+  if(!wbCtx){
+    wbCtx = canvas.getContext('2d');
+    canvas.style.pointerEvents = 'none';
+    canvas.addEventListener('pointerdown', e=>{
+      if(!wbDrawMode) return; wbDrawing = true;
+      const r = canvas.getBoundingClientRect();
+      wbCtx.beginPath(); wbCtx.moveTo(e.clientX-r.left, e.clientY-r.top);
+      wbCtx.strokeStyle = '#17181B'; wbCtx.lineWidth = 2.2; wbCtx.lineCap='round';
+    });
+    canvas.addEventListener('pointermove', e=>{
+      if(!wbDrawing) return;
+      const r = canvas.getBoundingClientRect();
+      wbCtx.lineTo(e.clientX-r.left, e.clientY-r.top); wbCtx.stroke();
+    });
+    window.addEventListener('pointerup', ()=>{
+      if(wbDrawing){ wbDrawing=false; state.whiteboard.drawing = canvas.toDataURL(); save('whiteboard', state.whiteboard); }
+    });
+  }
+  if(state.whiteboard.drawing){
+    const img = new Image();
+    img.onload = ()=>{ wbCtx.clearRect(0,0,canvas.width,canvas.height); wbCtx.drawImage(img,0,0); };
+    img.src = state.whiteboard.drawing;
+  }
+  state.whiteboard.stickies.forEach(s=>{
+    const el = document.createElement('div'); el.className='sticky'; el.style.left=s.x+'px'; el.style.top=s.y+'px'; el.style.background=s.color;
+    el.innerHTML = `<button class="sdel">✕</button><textarea placeholder="Type here…">${escapeHtml(s.text)}</textarea>`;
+    el.querySelector('textarea').addEventListener('input', e=>{ s.text = e.target.value; save('whiteboard', state.whiteboard); });
+    el.querySelector('.sdel').addEventListener('click', ()=>{ state.whiteboard.stickies = state.whiteboard.stickies.filter(x=>x.id!==s.id); save('whiteboard', state.whiteboard); renderWhiteboard(); });
+    let dragging=false, offX=0, offY=0;
+    el.addEventListener('pointerdown', e=>{
+      if(e.target.tagName==='TEXTAREA' || e.target.tagName==='BUTTON') return;
+      dragging=true; offX=e.clientX-s.x; offY=e.clientY-s.y; el.setPointerCapture(e.pointerId);
+    });
+    el.addEventListener('pointermove', e=>{
+      if(!dragging) return;
+      s.x = e.clientX-offX; s.y = e.clientY-offY; el.style.left=s.x+'px'; el.style.top=s.y+'px';
+    });
+    el.addEventListener('pointerup', ()=>{ if(dragging){ dragging=false; save('whiteboard', state.whiteboard); } });
+    surface.appendChild(el);
+  });
+}
+
+/* ---------------- AI ASSISTANT ---------------- */
+const aiMessagesEl = document.getElementById('aiMessages');
+function renderAiHistory(){
+  aiMessagesEl.innerHTML = '';
+  if(!state.aiHistory.length){
+    aiMessagesEl.innerHTML = '<div class="ai-msg assistant">Hi — I can see your real tasks, notes, goals and habits. Try one of the quick actions above, or just ask me something.</div>';
+  }
+  state.aiHistory.forEach(m=>{
+    const el = document.createElement('div'); el.className='ai-msg '+m.role; el.textContent = m.content; aiMessagesEl.appendChild(el);
+  });
+  aiMessagesEl.scrollTop = aiMessagesEl.scrollHeight;
+}
+function workspaceContext(){
+  const open = state.tasks.filter(t=>t.status!=='done').map(t=>`- [${t.priority}] ${t.title} (${t.status})`).join('\n') || 'none';
+  const notes = state.notes.slice(0,8).map(n=>`- ${n.title}: ${(n.body||'').slice(0,140)}`).join('\n') || 'none';
+  const goals = state.goals.map(g=>`- ${g.title} (${g.progress}%)`).join('\n') || 'none';
+  const habits = state.habits.map(h=>h.name).join(', ') || 'none';
+  return `Open tasks:\n${open}\n\nRecent notes:\n${notes}\n\nGoals:\n${goals}\n\nHabits tracked: ${habits}`;
+}
+async function callAI(userText){
+  state.aiHistory.push({role:'user', content:userText});
+  renderAiHistory();
+  const thinking = document.createElement('div'); thinking.className='ai-msg thinking'; thinking.textContent='Reading your workspace…';
+  aiMessagesEl.appendChild(thinking); aiMessagesEl.scrollTop = aiMessagesEl.scrollHeight;
+  try{
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6', max_tokens:1000,
+        messages:[{ role:'user', content:
+          `You are the FlowOS in-app AI assistant. Be concise, warm, and concrete — plain sentences, no headers or markdown, under 150 words unless asked for a list.\n\nHere is the user's real current workspace data:\n${workspaceContext()}\n\nUser's message: ${userText}` }]
+      })
+    });
+    const data = await response.json();
+    const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n').trim() || "I couldn't quite process that — try rephrasing.";
+    thinking.remove();
+    state.aiHistory.push({role:'assistant', content:text});
+  }catch(err){
+    thinking.remove();
+    state.aiHistory.push({role:'assistant', content:'Something went wrong reaching the AI just now. Try again in a moment.'});
+  }
+  save('aiHistory', state.aiHistory);
+  renderAiHistory();
+}
+document.getElementById('aiSend').addEventListener('click', ()=>{
+  const inp = document.getElementById('aiInput'); const v = inp.value.trim();
+  if(!v) return; inp.value=''; callAI(v);
+});
+document.getElementById('aiInput').addEventListener('keydown', e=>{
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); document.getElementById('aiSend').click(); }
+});
+document.getElementById('aiQuick').addEventListener('click', e=>{
+  const btn = e.target.closest('.chip'); if(btn) callAI(btn.dataset.p);
+});
+
+/* ---------------- COMMAND PALETTE ---------------- */
+const overlay = document.getElementById('cmdk-overlay'), cmdkInput = document.getElementById('cmdkInput'), cmdkList = document.getElementById('cmdkList');
+const baseCommands = [
+  {label:'Go to Dashboard', group:'nav', run:()=>goTo('dashboard')},
+  {label:'Go to Tasks', group:'nav', run:()=>goTo('tasks')},
+  {label:'Go to Notes', group:'nav', run:()=>goTo('notes')},
+  {label:'Go to Focus Room', group:'nav', run:()=>goTo('focus')},
+  {label:'Go to Calendar', group:'nav', run:()=>goTo('calendar')},
+  {label:'Go to Goals', group:'nav', run:()=>goTo('goals')},
+  {label:'Go to Habits', group:'nav', run:()=>goTo('habits')},
+  {label:'Go to Whiteboard', group:'nav', run:()=>goTo('whiteboard')},
+  {label:'Go to AI Assistant', group:'nav', run:()=>goTo('ai')},
+  {label:'Ask AI to prioritize my tasks', group:'action', run:()=>{ goTo('ai'); callAI('Look at my open tasks and tell me what I should prioritize today, and why.'); }},
+  {label:'Create new task', group:'action', run:()=>{ const t=prompt('Task title:'); if(t) addTask(t); goTo('tasks'); }},
+  {label:'Create new note', group:'action', run:()=>{ document.getElementById('newNoteBtn').click(); goTo('notes'); }},
+  {label:'Start a focus session', group:'action', run:()=>{ goTo('focus'); if(!focusRunning) startFocus(); }},
+  {label:'Log out', group:'action', run:()=>document.getElementById('logoutBtn').click()},
+];
+let cmdkSel = 0, cmdkFiltered = baseCommands;
+function openCmdk(){ overlay.classList.add('open'); cmdkInput.value=''; renderCmdk(); setTimeout(()=>cmdkInput.focus(),10); }
+function closeCmdk(){ overlay.classList.remove('open'); }
+document.getElementById('openCmdk').addEventListener('click', openCmdk);
+overlay.addEventListener('click', e=>{ if(e.target===overlay) closeCmdk(); });
+document.addEventListener('keydown', e=>{
+  if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); overlay.classList.contains('open')?closeCmdk():openCmdk(); }
+  if(e.key==='Escape') closeCmdk();
+  if(overlay.classList.contains('open')){
+    if(e.key==='ArrowDown'){ e.preventDefault(); cmdkSel=Math.min(cmdkSel+1, cmdkFiltered.length-1); renderCmdk(true); }
+    if(e.key==='ArrowUp'){ e.preventDefault(); cmdkSel=Math.max(cmdkSel-1,0); renderCmdk(true); }
+    if(e.key==='Enter'){ e.preventDefault(); const c=cmdkFiltered[cmdkSel]; if(c){ closeCmdk(); c.run(); } }
+  }
+});
+cmdkInput.addEventListener('input', ()=>{
+  const q = cmdkInput.value.toLowerCase();
+  let tasksAsCommands = state.tasks.filter(t=>t.status!=='done').map(t=>({label:'Open task: '+t.title, group:'task', run:()=>goTo('tasks')}));
+  const all = baseCommands.concat(tasksAsCommands);
+  cmdkFiltered = q ? all.filter(c=>c.label.toLowerCase().includes(q)) : baseCommands;
+  cmdkSel = 0; renderCmdk();
+});
+function renderCmdk(keepScroll){
+  cmdkList.innerHTML='';
+  if(!cmdkFiltered.length){ cmdkList.innerHTML = '<div class="empty" style="padding:14px;">No matches.</div>'; return; }
+  cmdkFiltered.forEach((c,i)=>{
+    const el = document.createElement('div'); el.className='cmdk-item'+(i===cmdkSel?' sel':'');
+    el.innerHTML = `<span>${escapeHtml(c.label)}</span><span class="cg">${c.group}</span>`;
+    el.addEventListener('click', ()=>{ closeCmdk(); c.run(); });
+    el.addEventListener('mouseenter', ()=>{ cmdkSel=i; renderCmdk(); });
+    cmdkList.appendChild(el);
+  });
+}
+
+/* ---------------- util ---------------- */
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+tryAutoLogin();
+</script>
+</body>
+</html>
